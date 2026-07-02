@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "adal-agent-sdk"
+version = "0.1.0"
+description = "Python SDK for AdaL Agent — embed AdaL's agent runtime in your applications"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "SylphAI" }]
+dependencies = [
+    "anyio>=4.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "httpx>=0.27",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["adal_agent_sdk*"]
+
+[tool.pytest.ini_options]
+anyio_mode = "auto"
