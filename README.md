@@ -59,6 +59,71 @@ asyncio.run(main())
 
 More examples are in [`examples/`](examples/).
 
+## Agent modes
+
+Select any main agent mode supported by the installed AdaL runtime. Mode names
+are validated by AdaL rather than duplicated in the Python package.
+
+```python
+from adal_agent_sdk import AdalAgentClient, AdalAgentOptions
+
+options = AdalAgentOptions(
+    workspace=".",
+    agent_mode="research",
+)
+
+async with AdalAgentClient(options) as client:
+    print(client.active_agent_mode)  # "research"
+
+    await client.query("Research durable memory architectures for coding agents")
+    async for event in client.receive_events(timeout=None):
+        if event["type"] == "assistant.delta":
+            print(event.get("text", ""), end="")
+
+    await client.set_agent_mode("coding")
+```
+
+Agent-mode operation deadlines are owned by the installed AdaL runtime. A
+runtime switch timeout raises `QueryError` with
+`code == "AGENT_MODE_SWITCH_TIMEOUT"` and leaves the session usable:
+
+```python
+from adal_agent_sdk import QueryError
+
+try:
+    await client.set_agent_mode("research")
+except QueryError as error:
+    if error.code == "AGENT_MODE_SWITCH_TIMEOUT":
+        print("AdaL could not finish the switch before its runtime deadline")
+```
+
+Separately, the SDK has a generic control-channel health watchdog. If the
+runtime never sends any correlated response, the SDK raises
+`RuntimeUnresponsive` with `code == "RUNTIME_UNRESPONSIVE"` and closes the
+session. Create a new client after this fatal error; continuing on the same
+wire stream could consume a late response out of order.
+
+The timing and recovery contract is public:
+
+| Condition | Deadline | Exception/code | Session state |
+|---|---:|---|---|
+| AdaL cannot complete an agent-mode switch | 60 seconds, owned by the runtime | `QueryError` / `AGENT_MODE_SWITCH_TIMEOUT` | Usable; retry or select another mode |
+| No correlated control response arrives | 120 seconds, SDK health watchdog | `RuntimeUnresponsive` / `RUNTIME_UNRESPONSIVE` | Closed; create a new client |
+| Runtime initialization never reaches `ready` | 180 seconds, SDK startup watchdog | `RuntimeUnresponsive` / `RUNTIME_UNRESPONSIVE` | Closed; create a new client |
+
+`RuntimeUnresponsive` also exposes the timed-out `operation` and `timeout`
+attributes for logs, telemetry, and retry policy.
+
+The SDK uses AdaL's existing UI-neutral event stream for every mode, including
+assistant, reasoning, tool, subagent, completion, and failure events. It does
+not define a separate research-result format.
+
+The SDK is a client for the installed AdaL runtime; it does not run the agent
+independently. Official packaged runtimes provide AdaL's managed web tools.
+Source/custom runtime builds remain responsible for their own tool
+configuration, and provider failures are reported through the normal SDK event
+stream.
+
 ## Permission callbacks
 
 ```python

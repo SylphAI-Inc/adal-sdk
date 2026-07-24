@@ -7,7 +7,7 @@ Quick start:
     async def main():
         async for event in query(
             prompt="Map this workspace: identify the main entry points, test command, and one improvement opportunity.",
-            options=AdalAgentOptions(allowed_tools=["Read", "Bash"]),
+            options=AdalAgentOptions(permission_mode="yolo"),
         ):
             print(event)
 
@@ -23,6 +23,8 @@ from .exceptions import (
     AdalConnectionError,
     QueryError,
     ProtocolError,
+    RuntimeUnresponsive,
+    RuntimeUpgradeRequired,
     SdkRuntimeError,
 )
 from .transport import SubprocessTransport
@@ -39,6 +41,8 @@ __all__ = [
     "AdalConnectionError",
     "QueryError",
     "ProtocolError",
+    "RuntimeUnresponsive",
+    "RuntimeUpgradeRequired",
     "SdkRuntimeError",
     "SubprocessTransport",
     "__version__",
