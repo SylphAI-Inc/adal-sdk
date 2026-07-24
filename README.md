@@ -50,7 +50,7 @@ from adal_agent_sdk import AdalAgentOptions, query
 async def main():
     async for event in query(
         prompt="Map this workspace: identify the main entry points, test command, and one improvement opportunity.",
-        options=AdalAgentOptions(enabled_default_tools=["Read", "Bash"]),
+        options=AdalAgentOptions(allowed_tools=["Read", "Bash"]),
     ):
         print(event)
 
