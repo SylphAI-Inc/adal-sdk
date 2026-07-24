@@ -3,7 +3,7 @@
 Demonstrates startup options plus runtime control requests:
 - set_model()
 - set_permission_mode()
-- allowed_tools / thinking_effort at initialization
+- thinking_effort at initialization
 
 Run:
     ADAL_MODEL=openai-gpt-5.4 python examples/session_controls.py /path/to/workspace
@@ -37,7 +37,7 @@ async def main() -> None:
         workspace=workspace,
         model=model,
         permission_mode="default",
-        allowed_tools=["Read", "Search"],
+
         thinking_effort=os.environ.get("ADAL_THINKING_EFFORT", "low"),
     )
 
