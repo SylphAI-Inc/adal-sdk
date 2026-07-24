@@ -393,6 +393,28 @@ class TestClientAgentModeControl:
         assert not client._initialized
 
     @pytest.mark.anyio
+    async def test_control_watchdog_is_not_reset_by_unrelated_frames(self):
+        class NoisyTransport(MockTransport):
+            async def receive(self, timeout=None):
+                await anyio.sleep(0)
+                return {"type": "assistant.delta", "text": "unrelated"}
+
+        transport = NoisyTransport()
+        client = make_client(transport=transport)
+        client._initialized = True
+
+        with anyio.fail_after(0.2):
+            with pytest.raises(RuntimeUnresponsive):
+                await client._send_control_request(
+                    {"subtype": "set_model", "model": "test-model"},
+                    timeout=0.01,
+                )
+
+        assert transport.closed
+        assert client._closed
+        assert not client._initialized
+
+    @pytest.mark.anyio
     async def test_control_watchdog_invalidates_active_reader_path(self):
         transport = MockTransport()
         client = make_client(transport=transport)

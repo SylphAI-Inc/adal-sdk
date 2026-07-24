@@ -448,7 +448,7 @@ class AdalAgentClient:
             # No active receive_events() loop — read directly from transport
             # until we get the matching control_response
             with anyio.move_on_after(timeout) as watchdog:
-                while True:
+                while not watchdog.cancel_called:
                     msg = await self._transport.receive()
 
                     msg_type = msg.get("type")
@@ -483,14 +483,14 @@ class AdalAgentClient:
                     # (shouldn't happen between queries, but be safe)
                     continue
 
-            if watchdog.cancel_called:
-                error = await self._invalidate_unresponsive_runtime(
-                    request.get("subtype", "unknown"),
-                    timeout,
-                )
-                raise error
+            if not watchdog.cancel_called:
+                raise ProtocolError("Control-response watchdog exited unexpectedly")
 
-            raise ProtocolError("Control-response watchdog exited unexpectedly")
+            error = await self._invalidate_unresponsive_runtime(
+                request.get("subtype", "unknown"),
+                timeout,
+            )
+            raise error
 
     async def _invalidate_unresponsive_runtime(
         self,
