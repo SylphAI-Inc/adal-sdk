@@ -7,7 +7,7 @@ Quick start:
     async def main():
         async for event in query(
             prompt="Map this workspace: identify the main entry points, test command, and one improvement opportunity.",
-            options=AdalAgentOptions(allowed_tools=["Read", "Bash"]),
+            options=AdalAgentOptions(permission_mode="yolo"),
         ):
             print(event)
 
@@ -27,7 +27,7 @@ from .exceptions import (
 )
 from .transport import SubprocessTransport
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "query",

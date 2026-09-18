@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Literal, Union
 
 
+PERMISSION_REASON_PROMPT = "prompt"
+PERMISSION_REASON_POLICY = "policy"
+
+
 @dataclass
 class ToolPermissionContext:
     """Context passed to the ``can_use_tool`` callback."""
@@ -14,10 +18,21 @@ class ToolPermissionContext:
     """Unique identifier for this tool call."""
 
     confirmation: dict[str, Any] | None = None
-    """Optional confirmation metadata (diff, prompt text, etc.)."""
+    """Confirmation metadata for edit tools: ``fileName``, ``fileDiff``,
+    ``title``. Keys are camelCase. Empty for tools without a preview."""
 
     display: dict[str, Any] | None = None
     """Optional display metadata."""
+
+    reason: str = PERMISSION_REASON_PROMPT
+    """Why the callback is asked. ``"prompt"``: a person would be asked about
+    this call in an interactive session. ``"policy"``: nobody would be asked
+    (read-only tool, session grant, or yolo); the callback is the only check."""
+
+    @property
+    def requires_human(self) -> bool:
+        """True when an interactive session would show a confirmation dialog."""
+        return self.reason == PERMISSION_REASON_PROMPT
 
 
 @dataclass

@@ -21,7 +21,12 @@ from .exceptions import (
     SdkError,
 )
 from .options import AdalAgentOptions
-from .permission import PermissionResultAllow, PermissionResultDeny, ToolPermissionContext
+from .permission import (
+    PERMISSION_REASON_PROMPT,
+    PermissionResultAllow,
+    PermissionResultDeny,
+    ToolPermissionContext,
+)
 from .transport import SubprocessTransport
 
 # SDK wire protocol constants — must stay in sync with the AdaL CLI SDK runtime.
@@ -78,6 +83,7 @@ class AdalAgentClient:
         self._transport = SubprocessTransport(
             runtime_path=options.runtime_path,
             cwd=str(options.workspace) if options.workspace else None,
+            auth_token=options.auth_token,
         )
         self._session_id: str | None = None
         self._closed = False
@@ -120,14 +126,22 @@ class AdalAgentClient:
             init_cmd["session_id"] = self._options.session_id
         if self._options.permission_mode:
             init_cmd["permission_mode"] = self._options.permission_mode
-        if self._options.auth_token:
-            init_cmd["auth_token"] = self._options.auth_token
-        if self._options.allowed_tools:
-            init_cmd["allowed_tools"] = self._options.allowed_tools
+        # auth_token is passed as a `--token` spawn arg (see SubprocessTransport),
+        # not in the initialize message — it is resolved from argv by the CLI like
+        # headless --token, so it does not travel over the stdin wire protocol.
+
+        if self._options.enabled_default_tools:
+            init_cmd["enabled_default_tools"] = self._options.enabled_default_tools
+        if self._options.disabled_default_tools:
+            init_cmd["disabled_default_tools"] = self._options.disabled_default_tools
         if self._options.thinking_effort:
             init_cmd["thinking_effort"] = self._options.thinking_effort
         if self._options.prompt_file:
             init_cmd["prompt_file"] = str(self._options.prompt_file)
+        if self._options.can_use_tool is not None:
+            # The runtime asks the backend to consult us about every tool call.
+            init_cmd["can_use_tool"] = True
+            init_cmd["can_use_tool_timeout_s"] = float(self._options.can_use_tool_timeout)
 
         await self._transport.send(init_cmd)
 
@@ -232,7 +246,10 @@ class AdalAgentClient:
         return await self._send_control_request({"subtype": "set_model", "model": model})
 
     async def set_permission_mode(self, mode: str) -> dict[str, Any]:
-        """Set the permission mode ('default', 'acceptEdits', 'yolo')."""
+        """Set the permission mode ('default', 'acceptEdits', 'yolo').
+
+        Raises :class:`QueryError` for any other value.
+        """
         return await self._send_control_request(
             {"subtype": "set_permission_mode", "mode": mode}
         )
@@ -392,6 +409,7 @@ class AdalAgentClient:
             tool_call_id=tool_call_id,
             confirmation=request.get("confirmation"),
             display=request.get("display"),
+            reason=request.get("reason", PERMISSION_REASON_PROMPT),
         )
 
         result = await self._options.can_use_tool(tool_name, tool_input, ctx)

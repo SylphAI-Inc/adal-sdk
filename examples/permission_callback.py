@@ -27,7 +27,7 @@ async def can_use_tool(
     tool_input: dict[str, Any],
     ctx: ToolPermissionContext,
 ):
-    print(f"\n[permission] tool={tool_name} call_id={ctx.tool_call_id}")
+    print(f"\n[permission] tool={tool_name} call_id={ctx.tool_call_id} reason={ctx.reason}")
     print(f"[permission] input={tool_input}")
 
     if tool_name.lower() == "bash":

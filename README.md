@@ -50,7 +50,7 @@ from adal_agent_sdk import AdalAgentOptions, query
 async def main():
     async for event in query(
         prompt="Map this workspace: identify the main entry points, test command, and one improvement opportunity.",
-        options=AdalAgentOptions(allowed_tools=["Read", "Bash"]),
+        options=AdalAgentOptions(enabled_default_tools=["Read", "Search", "Bash"]),
     ):
         print(event)
 
@@ -61,16 +61,22 @@ More examples are in [`examples/`](examples/).
 
 ## Permission callbacks
 
+A `can_use_tool` callback is the policy check for **every** tool call, read-only tools included. It can allow the call, deny it with a reason the model sees (the turn ends), or change its arguments.
+
 ```python
 from adal_agent_sdk import PermissionResult, ToolPermissionContext
 
 async def can_use_tool(tool_name: str, tool_input: dict, ctx: ToolPermissionContext):
+    if not ctx.requires_human:
+        return PermissionResult.allow()  # a read-only call nobody would be asked about
     if tool_name == "bash" and "rm -rf" in tool_input.get("command", ""):
         return PermissionResult.deny("Dangerous command")
     return PermissionResult.allow()
 
 options = AdalAgentOptions(workspace=".", can_use_tool=can_use_tool)
 ```
+
+`ctx.reason` is `"prompt"` when an interactive session would show a confirmation dialog for the call and `"policy"` when nobody would be asked. A callback that takes longer than `can_use_tool_timeout` (30 s by default) denies the call. Full reference: https://docs.sylph.ai/sdk/permissions
 
 ## Custom System prompt & Custom tools
 https://docs.sylph.ai/features/custom-system-prompt  

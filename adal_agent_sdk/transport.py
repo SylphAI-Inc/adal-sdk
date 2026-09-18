@@ -32,10 +32,12 @@ class SubprocessTransport:
         cwd: str | Path | None = None,
         env: dict[str, str] | None = None,
         stderr=None,
+        auth_token: str | None = None,
     ):
         self._runtime_path = str(runtime_path) if runtime_path else None
         self._cwd = str(cwd) if cwd else None
         self._env = env
+        self._auth_token = auth_token
         self._stderr = stderr if stderr is not None else sys.stderr
         self._process: anyio.abc.Process | None = None
         self._stdout_buffer = bytearray()
@@ -119,9 +121,13 @@ class SubprocessTransport:
         if self._env:
             spawn_env.update(self._env)
 
+        spawn_args = [binary, "--sdk-runtime"]
+        if self._auth_token:
+            spawn_args += ["--token", self._auth_token]
+
         try:
             self._process = await anyio.open_process(
-                [binary, "--sdk-runtime"],
+                spawn_args,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=self._stderr,
